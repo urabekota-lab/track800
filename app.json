@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Track800",
+    "slug": "track800",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "track800",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f4f6fb",
+    "primaryColor": "#1d3f7a",
+    "icon": "./assets/icon.png",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.track800.app"
+    },
+    "android": {
+      "package": "com.track800.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1d3f7a"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "Track800",
+      "shortName": "Track800",
+      "lang": "ja",
+      "themeColor": "#1d3f7a",
+      "backgroundColor": "#f4f6fb",
+      "display": "standalone",
+      "orientation": "portrait"
+    },
+    "plugins": [
+      "expo-sharing"
+    ]
+  }
+}
