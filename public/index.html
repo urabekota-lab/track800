@@ -11,14 +11,19 @@
     <meta name="description" content="800m のための練習ノート。練習からいまの800mタイムを推定します。" />
     <meta name="theme-color" content="#1d3f7a" />
 
-    <link rel="manifest" href="/manifest.json" />
+    <!--
+      public/ の中身は書き出し先へそのままコピーされ、Expo によるパス書き換えは
+      行われない。GitHub Pages は /track800/ のようなサブパスで配信されるため、
+      絶対パス(/manifest.json)ではなく相対パスにしてルート配信でも両方動くようにする。
+    -->
+    <link rel="manifest" href="manifest.json" />
 
     <!-- iOS のホーム画面から起動したときにブラウザ UI を消して全画面にする -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Track800" />
     <!-- black-translucent にすると内容がステータスバーの下に潜り込むので default にする -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
     <!-- react-native-web の推奨リセット -->
     <style id="expo-reset">

@@ -1,0 +1,58 @@
+name: Deploy to GitHub Pages
+
+# main に push するたびに Web 版を書き出して GitHub Pages へ公開する。
+# 手元で書き出したり deploy コマンドを打つ必要はない。
+on:
+  push:
+    branches: [main]
+  # Actions のページから手動実行もできるようにする
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 公開処理が重なると壊れるので、走っているものを待たせる
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Web 版を書き出す
+        # GitHub Pages は https://<user>.github.io/<リポジトリ名>/ で配信されるため、
+        # リポジトリ名を渡して baseUrl を組ませる（app.config.js が読む）
+        run: npx expo export --platform web
+        env:
+          PAGES_REPO_NAME: ${{ github.event.repository.name }}
+
+      - name: Jekyll の処理を無効化する
+        # Expo は _expo/ というディレクトリを作るが、Jekyll は
+        # アンダースコア始まりを非公開扱いにして配信しないため
+        run: touch dist/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

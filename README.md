@@ -186,20 +186,37 @@ iPhone に「アプリとして」入れるには Apple Developer Program（年 
 - [`public/manifest.json`](public/manifest.json) … アプリ名・テーマ色・アイコン
 - `public/` の中身は書き出し時にそのままルートへコピーされます
 
-### 手順
+### GitHub Pages で公開する（設定済み）
 
-1. Web 版を書き出す
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) を入れてあるので、
+**`main` に push するだけで自動的に公開されます**。手元で書き出す必要はありません。
+
+初回だけ GitHub 側の設定が必要です。
+
+1. GitHub で `track800` という名前のリポジトリを作る
+   （GitHub Pages を無料で使うには **public** にする必要があります）
+2. push する
 
 ```bash
-npx expo export --platform web
+git remote add origin https://github.com/<ユーザー名>/track800.git
+git push -u origin main
 ```
 
-2. `dist/` をどこかに公開する（HTTPS 必須）。
-   アカウント不要なら Netlify Drop（https://app.netlify.com/drop）に `dist` をドラッグ。
-   EAS Hosting なら `npx eas login` → `npx eas deploy`。
+3. リポジトリの **Settings → Pages** を開き、**Source** を **「GitHub Actions」** に変更
+4. Actions タブでビルドが終わるのを待つ（2〜3分）
+5. `https://<ユーザー名>.github.io/track800/` が公開される
 
-3. iPhone の **Safari** でその URL を開く
-4. 下部の **共有ボタン**（□に↑）→ **「ホーム画面に追加」**
+以降は `git push` するたびに自動で更新されます。
+
+**サブパス配信について**: GitHub Pages は `/track800/` の下で配信されるため、
+[`app.config.js`](app.config.js) がワークフローから渡されたリポジトリ名を受け取って
+`baseUrl` を組み立てています。`public/` の中身は Expo によるパス書き換えの対象外なので、
+`index.html` と `manifest.json` の参照は相対パスにしてあります。
+
+### ホーム画面に追加する
+
+1. iPhone の **Safari** で公開 URL を開く
+2. 下部の **共有ボタン**（□に↑）→ **「ホーム画面に追加」**
 
 > Chrome ではなく Safari で行ってください。iOS ではホーム画面への追加は Safari のみです。
 
