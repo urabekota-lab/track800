@@ -82,7 +82,7 @@ function formatShortDate(date: string): string {
 
 const styles = StyleSheet.create({
   axisRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 },
-  axisLabel: { fontSize: 10, color: colors.textFaint, fontVariant: ['tabular-nums'] },
+  axisLabel: { fontSize: 10.5, color: colors.textFaint, fontVariant: ['tabular-nums'] },
 
   chart: {
     height: CHART_HEIGHT,
@@ -95,12 +95,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   column: { flex: 1, height: '100%', justifyContent: 'flex-end' },
-  bar: { backgroundColor: '#b9c8e4', borderRadius: 2, minHeight: 3 },
-  barBest: { backgroundColor: colors.accent },
+  bar: { backgroundColor: '#a8bbdb', borderRadius: 2, minHeight: 3 },
+  barBest: { backgroundColor: colors.good },
   barLast: { backgroundColor: colors.primary },
 
   legend: { flexDirection: 'row', gap: 14, marginTop: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   swatch: { width: 10, height: 10, borderRadius: 2 },
-  legendText: { fontSize: 10.5, color: colors.textFaint },
+  legendText: { fontSize: 11, color: colors.textFaint },
 })

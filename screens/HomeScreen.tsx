@@ -12,6 +12,16 @@ import { LEVEL_LABEL } from '../lib/menuGenerator'
 
 const TYPE_LABEL = { speed: 'スピード型', balanced: 'バランス型', endurance: '持久型' } as const
 
+/** 精度の数字だけでは判断できないので、言葉に置き換える */
+function confidenceWord(confidence: number): string {
+  const pct = Math.round(confidence * 100)
+  const word =
+    pct >= 70 ? '高い'
+    : pct >= 45 ? 'ふつう'
+    : '低い'
+  return `${word}（${pct}%）`
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>()
   const { profile, prediction, workouts } = useApp()
@@ -44,11 +54,14 @@ export default function HomeScreen() {
             <Text style={styles.heroRange}>
               予測レンジ {formatTime(prediction.rangeLow, 1)} 〜 {formatTime(prediction.rangeHigh, 1)}
             </Text>
+            {/* 「65%」だけでは良いのか悪いのか分からないので、言葉も添える */}
             <View style={styles.confWrap}>
               <View style={styles.confTrack}>
                 <View style={[styles.confFill, { width: `${Math.round(prediction.confidence * 100)}%` }]} />
               </View>
-              <Text style={styles.confText}>精度 {Math.round(prediction.confidence * 100)}%</Text>
+              <Text style={styles.confText}>
+                精度 {confidenceWord(prediction.confidence)}
+              </Text>
             </View>
           </>
         ) : (
@@ -121,13 +134,19 @@ export default function HomeScreen() {
       {/* ---- ペースゾーン ---- */}
       {pred && (
         <Card title="練習のペース設定" icon="speedometer-outline">
+          <Text style={styles.zoneScaleNote}>
+            左の数字はきつさの段階です。1 がいちばん楽で、7 がいちばんきつい。
+          </Text>
           {ZONES.map((z) => {
             const r400 = zoneRange(z, pred, 400)
             const rkm = zoneRange(z, pred, 1000)
             return (
               <View key={z.key} style={styles.zoneRow}>
                 <View style={styles.zoneNameRow}>
-                  <View style={[styles.zoneDot, { backgroundColor: z.color }]} />
+                  {/* 色覚に頼らず段階が分かるよう、色チップの中に数字を入れる */}
+                  <View style={[styles.zoneBadge, { backgroundColor: z.color }]}>
+                    <Text style={styles.zoneBadgeText}>{z.level}</Text>
+                  </View>
                   <Text style={styles.zoneName}>{z.name}</Text>
                 </View>
                 <Text style={styles.zonePurpose}>{z.purpose}</Text>
@@ -247,10 +266,15 @@ const styles = StyleSheet.create({
 
   zoneRow: { paddingVertical: 9, borderTopWidth: 0.5, borderTopColor: colors.border },
   zoneNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  zoneDot: { width: 8, height: 8, borderRadius: 4 },
-  zoneName: { fontSize: 13, fontWeight: '700', color: colors.text },
-  zonePurpose: { fontSize: 10.5, color: colors.textFaint, marginTop: 2, marginLeft: 15 },
-  zoneValueRow: { flexDirection: 'row', gap: 6, marginTop: 6, marginLeft: 15 },
+  zoneScaleNote: { fontSize: 11, color: colors.textFaint, lineHeight: 16, marginBottom: 6 },
+  zoneBadge: {
+    width: 20, height: 20, borderRadius: 5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  zoneBadgeText: { fontSize: 11, fontWeight: '900', color: '#fff' },
+  zoneName: { fontSize: 13.5, fontWeight: '700', color: colors.text },
+  zonePurpose: { fontSize: 11, color: colors.textFaint, marginTop: 3, marginLeft: 27 },
+  zoneValueRow: { flexDirection: 'row', gap: 6, marginTop: 7, marginLeft: 27 },
   zoneValueCell: {
     flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 5,
     backgroundColor: '#f6f8fc', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5,

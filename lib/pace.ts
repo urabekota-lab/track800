@@ -2,6 +2,7 @@ import type {
   Effort, Level, PersonalBest, Prediction, PredictionSource,
   RunnerType, Workout, ZoneKey,
 } from './types'
+import { intensityRamp } from './theme'
 
 // ============================================================
 // タイム文字列の相互変換
@@ -534,21 +535,26 @@ export interface Zone {
   hi: number
   color: string
   purpose: string
+  /** きつさの段階（1が最も楽、7が最もきつい）。色だけに頼らず数字でも示す */
+  level: number
 }
 
 /**
  * 800m レース速度（v800）を基準にしたゾーン定義。
  * 例: 2:00 の選手なら v800 = 6.67m/s。閾値走は 0.71 倍 ≒ 4.73m/s ≒ 3'31/km。
+ *
+ * 色は theme.ts の intensityRamp から順に取る。
+ * 配列の順序＝きつさの順序なので、色も温度が上がっていく。
  */
 export const ZONES: Zone[] = [
-  { key: 'jog', name: 'ジョグ', lo: 0.44, hi: 0.52, color: '#64748b', purpose: 'W-up・回復・土台づくり' },
-  { key: 'threshold', name: '閾値走', lo: 0.68, hi: 0.74, color: '#0d9488', purpose: '乳酸を処理する力を上げる' },
-  { key: 'vo2', name: 'VO2max（3000mP）', lo: 0.78, hi: 0.84, color: '#2563eb', purpose: '最大酸素摂取量を上げる' },
-  { key: 'pace1500', name: '1500mペース', lo: 0.86, hi: 0.91, color: '#7c3aed', purpose: 'スピード持久の中核' },
-  { key: 'race', name: '800mレースペース', lo: 0.98, hi: 1.02, color: '#dc2626', purpose: 'レース感覚とリズム' },
-  { key: 'speed', name: 'スピード', lo: 1.03, hi: 1.08, color: '#ea580c', purpose: '乳酸耐性・ラスト勝負' },
-  { key: 'sprint', name: 'スプリント', lo: 1.09, hi: 1.15, color: '#db2777', purpose: '最高速度・神経系' },
-]
+  { key: 'jog', name: 'ジョグ', lo: 0.44, hi: 0.52, purpose: 'W-up・回復・土台づくり' },
+  { key: 'threshold', name: '閾値走', lo: 0.68, hi: 0.74, purpose: '乳酸を処理する力を上げる' },
+  { key: 'vo2', name: 'VO2max（3000mP）', lo: 0.78, hi: 0.84, purpose: '最大酸素摂取量を上げる' },
+  { key: 'pace1500', name: '1500mペース', lo: 0.86, hi: 0.91, purpose: 'スピード持久の中核' },
+  { key: 'race', name: '800mレースペース', lo: 0.98, hi: 1.02, purpose: 'レース感覚とリズム' },
+  { key: 'speed', name: 'スピード', lo: 1.03, hi: 1.08, purpose: '乳酸耐性・ラスト勝負' },
+  { key: 'sprint', name: 'スプリント', lo: 1.09, hi: 1.15, purpose: '最高速度・神経系' },
+].map((z, i) => ({ ...z, level: i + 1, color: intensityRamp[i] })) as Zone[]
 
 export function zoneOf(key: ZoneKey): Zone | null {
   return ZONES.find((z) => z.key === key) ?? null
