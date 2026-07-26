@@ -54,7 +54,12 @@ export default function HomeScreen() {
         ) : (
           <>
             <Text style={styles.heroEmpty}>まだ推定できません</Text>
-            <Text style={styles.heroRange}>自己ベストの登録か、練習を1回記録すると表示されます</Text>
+            {/* 理由は下の「推定の精度を上げるには」に出るので、記録がある場合は重ねて書かない */}
+            <Text style={styles.heroRange}>
+              {workouts.length === 0
+                ? '自己ベストの登録か、練習を1回記録すると表示されます'
+                : '下の案内にある記録がそろうと表示されます'}
+            </Text>
             <TouchableOpacity style={styles.heroCta} onPress={() => navigation.navigate('記録')}>
               <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
               <Text style={styles.heroCtaText}>練習を記録する</Text>

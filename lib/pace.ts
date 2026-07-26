@@ -34,8 +34,14 @@ export function parseTime(input: string): number | null {
 /** 秒を "2:05.43" 形式へ。60秒未満は "58.20" のように分を省く */
 export function formatTime(seconds: number | null | undefined, decimals = 2): string {
   if (seconds == null || !isFinite(seconds) || seconds <= 0) return '-'
-  const m = Math.floor(seconds / 60)
-  const s = seconds - m * 60
+
+  // 先に表示する桁数へ丸めてから分秒に分ける。
+  // 分けてから丸めると 119.99 秒が「1:60.0」になってしまう
+  const factor = 10 ** decimals
+  const rounded = Math.round(seconds * factor) / factor
+  const m = Math.floor(rounded / 60)
+  const s = rounded - m * 60
+
   if (m === 0) return s.toFixed(decimals)
   return `${m}:${s.toFixed(decimals).padStart(decimals > 0 ? decimals + 3 : 2, '0')}`
 }
@@ -271,10 +277,37 @@ export function convertTo800(distance: number, seconds: number, type: RunnerType
 /**
  * 換算元として 800m にどれだけ近いかの重み。
  * 1000m の記録は 3000m の記録よりはるかに 800m を語る。
+ *
+ * 短い側と長い側で減衰の強さを変えている。
+ * 150m や 300m のタイムが表すのは主に無酸素的なスピードで、
+ * 800m を走り切る力とはほとんど別物のため、短い側を強く減衰させる。
+ * （長い距離は有酸素能力を共有しているので、まだ 800m を語れる）
  */
 function closeness(distance: number): number {
-  const z = Math.log(distance / 800) / 0.55
-  return Math.exp(-z * z)
+  const z = Math.log(distance / 800)
+  const width = z < 0 ? 0.45 : 0.55
+  const r = z / width
+  return Math.exp(-r * r)
+}
+
+/**
+ * 800m を推定するために最低限必要な距離。
+ * これより短い記録しかない場合は、スピードは分かっても 800m は分からない。
+ * 150m のペースをそのまま伸ばすと 1:34 のような非現実的な値が出るため、
+ * 推定そのものを行わない。
+ */
+const PREDICT_MIN_DISTANCE = 400
+
+/**
+ * カテゴリ別の「これより速い推定は現実的でない」下限（秒）。
+ * 800m の世界記録は 1:40.91。日本の高校記録は 1:46 前後、中学記録は 1:53 前後。
+ * 入力が速すぎるときや短距離からの外挿が暴れたときの歯止めとして使う。
+ */
+const PLAUSIBLE_FLOOR: Record<Level, number> = {
+  jhs: 112,
+  hs: 104,
+  univ: 101,
+  masters: 101,
 }
 
 // ============================================================
@@ -340,6 +373,20 @@ export function predict800(input: PredictInput): Prediction {
     return empty
   }
 
+  // 短距離しかない場合は推定しない。
+  // 150m や 200m のタイムから 800m を出すと、スピードをそのまま
+  // 引き伸ばした非現実的な値になるため。
+  const longEnough = points.filter((p) => p.distance >= PREDICT_MIN_DISTANCE)
+  if (longEnough.length === 0) {
+    const best = points[points.length - 1]
+    advice.push(
+      `いまある記録は ${best.distance}m までです。800m を推定するには ${PREDICT_MIN_DISTANCE}m 以上の記録が必要です。`,
+    )
+    advice.push('短い距離のタイムはスピードを表しますが、800m を走り切る力とは別物なので、そこからは推定できません。')
+    advice.push('400m か 600m を1本、全力で測ってみてください。')
+    return empty
+  }
+
   const sources: PredictionSource[] = []
 
   // --- 1) Critical Speed モデル ---
@@ -380,7 +427,7 @@ export function predict800(input: PredictInput): Prediction {
   // --- 3) 各記録を 800m 相当に換算して、800m に近い距離ほど重く平均する ---
   // 400m 前後は 2) が担当するので二重計上しない
   const equivPoints = points
-    .filter((p) => p.distance >= 250 && p.distance <= 5000)
+    .filter((p) => p.distance >= PREDICT_MIN_DISTANCE && p.distance <= 5000)
     .filter((p) => !(p.distance >= 380 && p.distance <= 420))
     .map((p) => ({ p, seconds: convertTo800(p.distance, p.seconds, runnerType), w: closeness(p.distance) }))
     .filter((x): x is { p: PerfPoint; seconds: number; w: number } => x.seconds != null)
@@ -402,13 +449,26 @@ export function predict800(input: PredictInput): Prediction {
   }
 
   if (sources.length === 0) {
-    advice.push('800m の推定には、250m〜5000m の全力に近い記録が必要です。')
+    advice.push(`800m の推定には、${PREDICT_MIN_DISTANCE}m〜5000m の全力に近い記録が必要です。`)
     advice.push('まずは 400m か 1000m の全力タイムを登録してみてください。')
     return empty
   }
 
   const totalWeight = sources.reduce((a, s) => a + s.weight, 0)
-  const seconds = sources.reduce((a, s) => a + s.seconds * s.weight, 0) / totalWeight
+  const raw = sources.reduce((a, s) => a + s.seconds * s.weight, 0) / totalWeight
+
+  // 現実的な下限で止める。
+  // 入力が速すぎる、短い距離からの外挿が暴れた、といった場合に
+  // 世界記録より速い推定を出してしまわないようにする。
+  const floor = PLAUSIBLE_FLOOR[level]
+  const seconds = Math.max(raw, floor)
+  const clamped = raw < floor
+  if (clamped) {
+    advice.push(
+      `記録から計算すると ${formatTime(raw, 1)} になりますが、これは現実的な範囲を超えているため ${formatTime(floor, 1)} で止めています。`,
+    )
+    advice.push('入力したタイムや距離が正しいか、確認してみてください。')
+  }
 
   // --- 信頼度 ---
   // 「800m にどれだけ近い距離の記録を持っているか」が最も効く
@@ -424,6 +484,10 @@ export function predict800(input: PredictInput): Prediction {
     ? (Math.max(...sources.map((s) => s.seconds)) - Math.min(...sources.map((s) => s.seconds))) / seconds
     : 0
   confidence = Math.min(0.95, confidence) - Math.min(0.3, disagreement * 4)
+
+  // 下限で止めた値は「記録から導けた数字」ではないので、精度が高いと見せてはいけない
+  if (clamped) confidence = Math.min(confidence, 0.15)
+
   confidence = Math.max(0.1, confidence)
 
   // レンジは信頼度だけから決める（表示上の「精度」と必ず整合させる）
@@ -446,7 +510,8 @@ export function predict800(input: PredictInput): Prediction {
 
   return {
     seconds,
-    rangeLow: seconds - half,
+    // レンジの下端も現実的な下限より速くしない
+    rangeLow: Math.max(seconds - half, floor),
     rangeHigh: seconds + half,
     confidence,
     sources: sources.map((s) => ({ ...s, weight: s.weight / totalWeight })),
