@@ -14,6 +14,14 @@ export interface Profile {
   level: Level
   runnerType: RunnerType
   team: string
+  /** 目標レース。設定すると時期が自動で決まる */
+  targetRace: TargetRace | null
+}
+
+export interface TargetRace {
+  name: string
+  /** YYYY-MM-DD */
+  date: string
 }
 
 export interface PersonalBest {
@@ -34,6 +42,11 @@ export type Effort = 'trial' | 'repetition' | 'interval' | 'continuous'
 export interface WorkoutRep {
   distance: number // m
   seconds: number
+  /**
+   * そのとき狙っていた設定タイム（秒）。メニューから記録したときに入る。
+   * あとでメニューを編集しても当時の設定が残るよう、記録側に持たせている。
+   */
+  target?: number | null
 }
 
 export interface Workout {

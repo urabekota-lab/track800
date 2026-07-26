@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
@@ -11,6 +11,7 @@ import { formatTime } from '../lib/pace'
 import {
   DAY_TYPE_LABEL, PHASE_DESC, PHASE_LABEL, suggestMenus, suggestWeek,
 } from '../lib/menuGenerator'
+import { seasonInfo } from '../lib/analysis'
 import type { DayType } from '../lib/menuGenerator'
 import type { Phase } from '../lib/types'
 
@@ -20,12 +21,23 @@ const DAY_TYPES: (DayType | 'any')[] = ['any', 'point', 'sub', 'long']
 export default function SuggestScreen() {
   const navigation = useNavigation<any>()
   const { profile, prediction } = useApp()
-  const [phase, setPhase] = useState<Phase>('build')
+
+  // 目標レースがあれば、そこまでの週数で決まる時期を初期選択にする
+  const season = useMemo(
+    () => (profile.targetRace ? seasonInfo(profile.targetRace.date) : null),
+    [profile.targetRace],
+  )
+  const [phase, setPhase] = useState<Phase>(season?.phase ?? 'build')
   const [dayType, setDayType] = useState<DayType | 'any'>('any')
   const [mode, setMode] = useState<'single' | 'week'>('single')
   const [pointsPerWeek, setPointsPerWeek] = useState(2)
 
-  const level = profile?.level ?? 'hs'
+  // レース日を変えたときは自動判定に追従させる
+  useEffect(() => {
+    if (season) setPhase(season.phase)
+  }, [season?.phase])
+
+  const level = profile?.level ?? 'univ'
   const pred = prediction.seconds
 
   const menus = useMemo(
@@ -47,6 +59,12 @@ export default function SuggestScreen() {
             ? `推定 ${formatTime(pred, 1)} を基準に設定タイムを計算しています`
             : '推定タイムが出ると、各本の設定タイムが自動で入ります'}
         </Text>
+        {season && profile.targetRace && (
+          <Text style={styles.headerRace}>
+            {profile.targetRace.name} まで{' '}
+            {season.daysLeft >= 0 ? `${season.daysLeft}日（${PHASE_LABEL[season.phase]}）` : '終了'}
+          </Text>
+        )}
       </View>
 
       <Card>
@@ -152,6 +170,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 18, marginBottom: 12 },
   headerTitle: { fontSize: 19, fontWeight: 'bold', color: colors.text },
   headerSub: { fontSize: 12, color: colors.textSub, marginTop: 3, lineHeight: 17 },
+  headerRace: { fontSize: 12, color: colors.primary, fontWeight: '800', marginTop: 5 },
 
   modeTabs: { flexDirection: 'row', backgroundColor: '#eef1f7', borderRadius: radius.sm, padding: 3, marginBottom: 14 },
   modeTab: { flex: 1, paddingVertical: 8, borderRadius: 6, alignItems: 'center' },

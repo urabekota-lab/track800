@@ -103,6 +103,29 @@ export default function MenuDetailScreen() {
     }
   }
 
+  /**
+   * このメニューを記録画面へ持っていく。
+   * 設定タイムを各本に付けて渡すので、保存後に「設定どおり走れたか」を分析できる。
+   */
+  const startWorkout = () => {
+    const rows = displaySets
+      .filter((s) => s.kind === 'main' && s.distance > 0)
+      .flatMap((s) =>
+        Array.from({ length: Math.max(1, s.reps) * Math.max(1, s.sets) }, () => ({
+          distance: s.distance,
+          target: s.targetSec,
+        })),
+      )
+    if (rows.length === 0) {
+      setError('このメニューには距離を持つメイン練習がないため、記録に持っていけません')
+      return
+    }
+    navigation.navigate('Main', {
+      screen: '記録',
+      params: { prefill: { menuId: menuId ?? null, title: menu.title, rows } },
+    })
+  }
+
   const handleDelete = () => {
     confirmDestructive('メニューを削除', `「${menu.title}」を削除しますか？`, async () => {
       await removeMenu(menu.id)
@@ -179,11 +202,13 @@ export default function MenuDetailScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.actions}>
+        <Button label="この練習をやる（記録へ）" icon="play-circle-outline" onPress={startWorkout} />
+
         {isDraft ? (
-          <Button label="自分のメニューに保存" icon="bookmark-outline" onPress={handleSave} />
+          <Button label="自分のメニューに保存" icon="bookmark-outline" variant="secondary" onPress={handleSave} />
         ) : (
           <>
-            <Button label="共有コードを送る" icon="share-social-outline" onPress={handleShare} />
+            <Button label="共有コードを送る" icon="share-social-outline" variant="secondary" onPress={handleShare} />
             <Button
               label="編集する"
               icon="create-outline"

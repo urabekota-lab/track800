@@ -17,9 +17,11 @@ export interface AppData {
 export const DEFAULT_PROFILE: Profile = {
   displayName: '',
   role: 'athlete',
-  level: 'hs',
+  // 大学生を主な利用者として想定しているので初期値にする
+  level: 'univ',
   runnerType: 'balanced',
   team: '',
+  targetRace: null,
 }
 
 export function emptyData(): AppData {
@@ -52,6 +54,10 @@ function toProfile(raw: any): Profile {
     level: LEVELS.includes(p.level) ? p.level : 'hs',
     runnerType: TYPES.includes(p.runnerType) ? p.runnerType : 'balanced',
     team: str(p.team),
+    targetRace:
+      p.targetRace && /^\d{4}-\d{2}-\d{2}$/.test(str(p.targetRace.date))
+        ? { name: str(p.targetRace.name), date: str(p.targetRace.date) }
+        : null,
   }
 }
 
@@ -79,7 +85,11 @@ function toWorkouts(raw: any): Workout[] {
           : 'interval',
       reps: Array.isArray(w?.reps)
         ? w.reps
-            .map((r: any) => ({ distance: Math.round(num(r?.distance)), seconds: num(r?.seconds) }))
+            .map((r: any) => ({
+              distance: Math.round(num(r?.distance)),
+              seconds: num(r?.seconds),
+              target: typeof r?.target === 'number' && r.target > 0 ? r.target : null,
+            }))
             .filter((r: any) => r.distance > 0 && r.seconds > 0)
         : [],
       restSec: typeof w?.restSec === 'number' ? w.restSec : null,

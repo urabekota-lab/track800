@@ -1,7 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import { useApp } from '../lib/AppContext'
+import { analyzeWorkout } from '../lib/analysis'
 import { confirmDestructive } from '../lib/confirm'
 import { EFFORT_LABEL, formatTime, parseTime } from '../lib/pace'
 import {
@@ -33,6 +35,15 @@ const TABS: { key: Tab; label: string }[] = [
 interface RepRow {
   distance: string
   time: string
+  /** メニューから来た設定タイム（秒）。手入力の行では null */
+  target?: number | null
+}
+
+/** メニュー詳細から渡ってくる形 */
+interface Prefill {
+  menuId: string | null
+  title: string
+  rows: { distance: number; target: number | null }[]
 }
 
 /** offset 日前の日付を YYYY-MM-DD で返す */
@@ -59,8 +70,11 @@ const formatMeters = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)}km` : 
 
 export default function LogScreen() {
   const { workouts, addWorkout, removeWorkout } = useApp()
+  const navigation = useNavigation<any>()
+  const route = useRoute<any>()
   const [tab, setTab] = useState<Tab>('history')
   const [open, setOpen] = useState(false)
+  const [menuId, setMenuId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -83,7 +97,23 @@ export default function LogScreen() {
     setCondition(3)
     setNote('')
     setError('')
+    setMenuId(null)
   }, [])
+
+  // メニュー詳細の「この練習をやる」から来たら、設定タイム付きで入力欄を埋める
+  const prefill: Prefill | undefined = route.params?.prefill
+  useEffect(() => {
+    if (!prefill) return
+    setDate(todayString())
+    setTitle(prefill.title)
+    setMenuId(prefill.menuId)
+    setRows(prefill.rows.map((r) => ({ distance: String(r.distance), time: '', target: r.target })))
+    setError('')
+    setOpen(true)
+    setTab('history')
+    // 同じ内容で二重に埋めないよう、使ったら消す
+    navigation.setParams({ prefill: undefined })
+  }, [prefill, navigation])
 
   const addRow = () => {
     const last = rows[rows.length - 1]
@@ -108,8 +138,9 @@ export default function LogScreen() {
     setError('')
 
     const reps = rows
-      .map((r) => ({ distance: Number(r.distance), seconds: parseTime(r.time) }))
-      .filter((r) => r.distance > 0 && r.seconds != null) as { distance: number; seconds: number }[]
+      .map((r) => ({ distance: Number(r.distance), seconds: parseTime(r.time), target: r.target ?? null }))
+      .filter((r) => r.distance > 0 && r.seconds != null) as
+        { distance: number; seconds: number; target: number | null }[]
 
     if (reps.length === 0) {
       setError('少なくとも1本、距離とタイムを入力してください（例：400 / 62.5）')
@@ -125,7 +156,7 @@ export default function LogScreen() {
       await addWorkout({
         date, title: title.trim(), effort, reps,
         restSec: restSec ? parseTime(restSec) : null,
-        condition, note: note.trim(), menuId: null,
+        condition, note: note.trim(), menuId,
       })
       reset()
       setOpen(false)
@@ -210,6 +241,10 @@ export default function LogScreen() {
                   keyboardType="numbers-and-punctuation"
                   style={styles.repTime}
                 />
+                {/* メニューから来た本は設定タイムを並べて出す */}
+                {r.target != null ? (
+                  <Text style={styles.repTarget}>設定{formatTime(r.target, 1)}</Text>
+                ) : null}
                 <TouchableOpacity onPress={() => removeRow(i)} style={styles.repDelete}>
                   <Ionicons name="close-circle" size={19} color={colors.textFaint} />
                 </TouchableOpacity>
@@ -319,15 +354,29 @@ function HistoryView({ workouts, onDelete }: {
                 </View>
 
                 <View style={styles.repsWrap}>
-                  {w.reps.map((r, i) => (
-                    <View key={i} style={[styles.repPill, r.seconds === fastest && styles.repPillBest]}>
-                      <Text style={[styles.repPillDist, r.seconds === fastest && { color: '#fff' }]}>{r.distance}m</Text>
-                      <Text style={[styles.repPillTime, r.seconds === fastest && { color: '#fff' }]}>
-                        {formatTime(r.seconds, 1)}
-                      </Text>
-                    </View>
-                  ))}
+                  {w.reps.map((r, i) => {
+                    const delta = r.target != null ? r.seconds - r.target : null
+                    return (
+                      <View key={i} style={[styles.repPill, r.seconds === fastest && styles.repPillBest]}>
+                        <Text style={[styles.repPillDist, r.seconds === fastest && { color: '#fff' }]}>{r.distance}m</Text>
+                        <Text style={[styles.repPillTime, r.seconds === fastest && { color: '#fff' }]}>
+                          {formatTime(r.seconds, 1)}
+                        </Text>
+                        {/* 設定との差。負なら設定より速い */}
+                        {delta != null && (
+                          <Text style={[
+                            styles.repPillDelta,
+                            r.seconds === fastest ? { color: '#fff' } : delta <= 0 ? { color: colors.good } : { color: colors.warn },
+                          ]}>
+                            {delta <= 0 ? '' : '+'}{delta.toFixed(1)}
+                          </Text>
+                        )}
+                      </View>
+                    )
+                  })}
                 </View>
+
+                <WorkoutAnalysisBlock workout={w} />
 
                 {w.note ? <Text style={styles.logNote}>{w.note}</Text> : null}
               </View>
@@ -335,6 +384,37 @@ function HistoryView({ workouts, onDelete }: {
           })}
         </View>
       ))}
+    </View>
+  )
+}
+
+/** 1回の練習の分析。落ち込み・ばらつき・設定達成をまとめて出す */
+function WorkoutAnalysisBlock({ workout }: { workout: Workout }) {
+  const a = useMemo(() => analyzeWorkout(workout), [workout])
+
+  const metrics: { label: string; value: string }[] = []
+  if (a.fadePct != null) metrics.push({ label: '落ち込み', value: `${a.fadePct.toFixed(1)}%` })
+  if (a.spread != null) metrics.push({ label: 'ばらつき', value: `±${a.spread.toFixed(1)}秒` })
+  if (a.onTarget) metrics.push({ label: '設定達成', value: `${a.onTarget.hit}/${a.onTarget.total}本` })
+
+  if (metrics.length === 0) return null
+
+  const tone =
+    a.verdictKind === 'good' ? styles.verdictGood
+    : a.verdictKind === 'warn' ? styles.verdictWarn
+    : styles.verdictInfo
+
+  return (
+    <View style={styles.analysis}>
+      <View style={styles.metricRow}>
+        {metrics.map((m) => (
+          <View key={m.label} style={styles.metricCell}>
+            <Text style={styles.metricLabel}>{m.label}</Text>
+            <Text style={styles.metricValue}>{m.value}</Text>
+          </View>
+        ))}
+      </View>
+      <Text style={[styles.verdict, tone]}>{a.verdict}</Text>
     </View>
   )
 }
@@ -535,6 +615,20 @@ const styles = StyleSheet.create({
   repPillBest: { backgroundColor: colors.accentStrong },
   repPillDist: { fontSize: 10, color: colors.textFaint, fontWeight: '600' },
   repPillTime: { fontSize: 13, color: colors.text, fontWeight: '700' },
+  repPillDelta: { fontSize: 10.5, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  repTarget: { fontSize: 10.5, color: colors.textFaint, fontVariant: ['tabular-nums'] },
+
+  analysis: {
+    backgroundColor: '#f6f8fc', borderRadius: radius.sm, padding: 10, marginTop: 9,
+  },
+  metricRow: { flexDirection: 'row', gap: 8 },
+  metricCell: { flex: 1 },
+  metricLabel: { fontSize: 10.5, color: colors.textFaint, fontWeight: '700' },
+  metricValue: { fontSize: 14, color: colors.text, fontWeight: '800', fontVariant: ['tabular-nums'], marginTop: 1 },
+  verdict: { fontSize: 11.5, lineHeight: 17, marginTop: 8, fontWeight: '600' },
+  verdictGood: { color: colors.good },
+  verdictWarn: { color: colors.warn },
+  verdictInfo: { color: colors.textSub },
   logNote: { fontSize: 11.5, color: colors.textSub, marginTop: 8, lineHeight: 17 },
 
   trendSingle: {

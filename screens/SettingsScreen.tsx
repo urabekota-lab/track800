@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Screen } from '../components/Screen'
@@ -8,7 +8,8 @@ import { exportBackup, importBackup } from '../lib/backup'
 import { Button, Card, Chip, ChipRow, Field, Input } from '../components/ui'
 import { colors, radius } from '../lib/theme'
 import { formatTime, parseTime } from '../lib/pace'
-import { LEVEL_LABEL } from '../lib/menuGenerator'
+import { LEVEL_LABEL, PHASE_LABEL } from '../lib/menuGenerator'
+import { seasonInfo } from '../lib/analysis'
 import type { Level, RunnerType } from '../lib/types'
 
 const LEVELS: Level[] = ['jhs', 'hs', 'univ', 'masters']
@@ -30,6 +31,8 @@ export default function SettingsScreen() {
 
   const [displayName, setDisplayName] = useState('')
   const [team, setTeam] = useState('')
+  const [raceName, setRaceName] = useState('')
+  const [raceDate, setRaceDate] = useState('')
   const [pbInputs, setPbInputs] = useState<Record<number, string>>({})
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -38,7 +41,26 @@ export default function SettingsScreen() {
   useEffect(() => {
     setDisplayName(profile.displayName)
     setTeam(profile.team)
-  }, [profile.displayName, profile.team])
+    setRaceName(profile.targetRace?.name ?? '')
+    setRaceDate(profile.targetRace?.date ?? '')
+  }, [profile.displayName, profile.team, profile.targetRace])
+
+  /** 入力中の日付から時期を先に見せる（保存前でも分かるように） */
+  const season = useMemo(
+    () => (/^\d{4}-\d{2}-\d{2}$/.test(raceDate) ? seasonInfo(raceDate) : null),
+    [raceDate],
+  )
+
+  const saveRace = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raceDate)) {
+      fail(new Error('レース日は YYYY-MM-DD の形式で入力してください'))
+      return
+    }
+    try {
+      await updateProfile({ targetRace: { name: raceName.trim() || '目標レース', date: raceDate } })
+      notify('目標レースを保存しました')
+    } catch (e) { fail(e) }
+  }
 
   useEffect(() => {
     const next: Record<number, string> = {}
@@ -105,6 +127,49 @@ export default function SettingsScreen() {
           <Input value={team} onChangeText={setTeam} placeholder="例：〇〇高校陸上部" />
         </Field>
         <Button label="プロフィールを保存" onPress={saveProfileInfo} variant="secondary" />
+      </Card>
+
+      <Card title="目標レース" icon="flag-outline">
+        <Text style={styles.hint}>
+          レース日を入れると、そこまでの週数から練習の時期（準備期／鍛錬期／仕上げ期／試合期）が
+          自動で決まります。「提案」タブの初期選択にも反映されます。
+        </Text>
+        <View style={{ height: 10 }} />
+        <Field label="レース名">
+          <Input value={raceName} onChangeText={setRaceName} placeholder="例：関東インカレ" />
+        </Field>
+        <Field label="レース日" hint="YYYY-MM-DD の形式で入力してください">
+          <Input
+            value={raceDate}
+            onChangeText={setRaceDate}
+            placeholder="2026-09-12"
+            keyboardType="numbers-and-punctuation"
+          />
+        </Field>
+        {season && (
+          <View style={styles.seasonBox}>
+            <Text style={styles.seasonPhase}>
+              {season.daysLeft >= 0 ? `あと ${season.daysLeft}日（${season.weeksLeft}週）` : '終了'}
+              {' ・ '}{PHASE_LABEL[season.phase]}
+            </Text>
+            <Text style={styles.seasonReason}>{season.phaseReason}</Text>
+          </View>
+        )}
+        <View style={{ gap: 8 }}>
+          <Button label="目標レースを保存" icon="save-outline" onPress={saveRace} />
+          {profile.targetRace && (
+            <Button
+              label="目標レースを消す"
+              variant="secondary"
+              onPress={async () => {
+                await updateProfile({ targetRace: null })
+                setRaceName('')
+                setRaceDate('')
+                notify('目標レースを消しました')
+              }}
+            />
+          )}
+        </View>
       </Card>
 
       <Card title="カテゴリ" icon="school-outline">
@@ -214,6 +279,13 @@ const styles = StyleSheet.create({
 
   pbRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
   pbDistance: { width: 52, fontSize: 13, fontWeight: '700', color: colors.textSub },
+
+  seasonBox: {
+    backgroundColor: colors.primarySoft, borderRadius: radius.sm,
+    padding: 11, marginBottom: 12,
+  },
+  seasonPhase: { fontSize: 13.5, fontWeight: '800', color: colors.primary },
+  seasonReason: { fontSize: 11.5, color: colors.textSub, lineHeight: 17, marginTop: 4 },
 
   backupStats: {
     backgroundColor: '#f6f8fc', borderRadius: radius.sm, padding: 10, marginTop: 10, marginBottom: 12,

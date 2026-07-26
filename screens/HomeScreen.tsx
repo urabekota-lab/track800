@@ -8,7 +8,8 @@ import { colors, radius } from '../lib/theme'
 import {
   EFFORT_LABEL, ZONES, equivalentTimes, formatTime, raceSplits, velocity800, zoneRange,
 } from '../lib/pace'
-import { LEVEL_LABEL } from '../lib/menuGenerator'
+import { LEVEL_LABEL, PHASE_LABEL } from '../lib/menuGenerator'
+import { seasonInfo } from '../lib/analysis'
 
 const TYPE_LABEL = { speed: 'スピード型', balanced: 'バランス型', endurance: '持久型' } as const
 
@@ -26,6 +27,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>()
   const { profile, prediction, workouts } = useApp()
 
+  const season = profile.targetRace ? seasonInfo(profile.targetRace.date) : null
   const pred = prediction.seconds
   const recent = workouts.slice(0, 3)
 
@@ -80,6 +82,22 @@ export default function HomeScreen() {
           </>
         )}
       </View>
+
+      {/* ---- 目標レースまでの残り ---- */}
+      {season && profile.targetRace && (
+        <TouchableOpacity style={styles.raceBox} onPress={() => navigation.navigate('提案')}>
+          <Ionicons name="flag" size={18} color={colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.raceName}>{profile.targetRace.name}</Text>
+            <Text style={styles.raceMeta}>
+              {season.daysLeft >= 0
+                ? `あと ${season.daysLeft}日 ・ ${PHASE_LABEL[season.phase]}`
+                : '終了しました。次の目標を設定しましょう'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+        </TouchableOpacity>
+      )}
 
       {/* ---- 根拠 ---- */}
       {prediction.sources.length > 0 && (
@@ -266,6 +284,15 @@ const styles = StyleSheet.create({
 
   zoneRow: { paddingVertical: 9, borderTopWidth: 0.5, borderTopColor: colors.border },
   zoneNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  raceBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.primarySoft, borderRadius: radius.md,
+    paddingHorizontal: 13, paddingVertical: 12,
+    marginHorizontal: 12, marginBottom: 12,
+  },
+  raceName: { fontSize: 13.5, fontWeight: '800', color: colors.primary },
+  raceMeta: { fontSize: 11.5, color: colors.textSub, marginTop: 2 },
+
   zoneScaleNote: { fontSize: 11, color: colors.textFaint, lineHeight: 16, marginBottom: 6 },
   zoneBadge: {
     width: 20, height: 20, borderRadius: 5,
