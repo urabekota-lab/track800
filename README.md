@@ -12,7 +12,7 @@
 - 共有コードによるメニューの受け渡し
 - データの書き出し・取り込み
 
-技術スタック: Expo SDK 56 (React Native 0.85 / React 19.2)
+技術スタック: Expo SDK 57 (React Native 0.86 / React 19.2)
 
 **スマホ（iOS / Android）がメインの実行環境**です。Web でも動きますが、
 レイアウトはスマホの画面幅を前提に組んでいます。
@@ -47,6 +47,12 @@ npm install
 ```bash
 npx expo start
 ```
+
+> iPhone では **標準のカメラアプリ**で QR を読みます。iOS 版 Expo Go には
+> QR スキャナーがありません（Android 版にはあります）。
+>
+> Expo Go は**最新 SDK 版しか動きません**。「このバージョンに対応していない」と
+> 言われたら、Expo Go を更新するか、プロジェクトの SDK を上げてください（AGENTS.md 参照）。
 
 同じ Wi-Fi につなげない場合はトンネル経由で:
 
