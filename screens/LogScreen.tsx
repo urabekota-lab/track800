@@ -85,9 +85,6 @@ export default function LogScreen() {
   const [restSec, setRestSec] = useState('')
   const [condition, setCondition] = useState(3)
   const [note, setNote] = useState('')
-  /** 「400m × 5本」をまとめて作るための入力 */
-  const [bulkDistance, setBulkDistance] = useState('400')
-  const [bulkReps, setBulkReps] = useState('5')
   /** レスト・コンディション・メモは畳んでおく */
   const [showOptional, setShowOptional] = useState(false)
 
@@ -97,7 +94,7 @@ export default function LogScreen() {
     setDate(todayString())
     setTitle('')
     setEffort('interval')
-    setRows([{ distance: '400', time: '' }])
+    setRows([{ distance: '', time: '' }])
     setRestSec('')
     setCondition(3)
     setNote('')
@@ -128,22 +125,10 @@ export default function LogScreen() {
     setRows(rows.length === 1 ? rows : rows.filter((_, idx) => idx !== i))
   }
 
-  /** 「400m × 5本」から行をまとめて作る。1本ずつ追加させないための入口 */
-  const buildRows = () => {
-    const d = Number(bulkDistance)
-    const n = Number(bulkReps)
-    if (!(d > 0) || !(n > 0)) {
-      setError('距離と本数を入力してください（例：400 と 5）')
-      return
-    }
-    setError('')
-    setRows(Array.from({ length: Math.min(30, n) }, () => ({ distance: String(d), time: '' })))
-  }
-
-  /** 同じ距離をもう1本だけ足す */
+  /** 同じ距離をもう1本足す */
   const addRowSameDistance = () => {
     const last = rows[rows.length - 1]
-    setRows([...rows, { distance: last?.distance ?? bulkDistance, time: '', target: last?.target ?? null }])
+    setRows([...rows, { distance: last?.distance ?? '', time: '', target: last?.target ?? null }])
   }
 
   /** 直近の練習と同じ構成で入力欄を用意する（タイムは空） */
@@ -248,39 +233,6 @@ export default function LogScreen() {
             </ChipRow>
           </Field>
 
-          {/* 本数分の欄をまとめて作る。1本ずつ追加させない */}
-          <Field label="本数をまとめて用意する">
-            <View style={styles.bulkRow}>
-              <Input
-                value={bulkDistance}
-                onChangeText={(v) => setBulkDistance(v.replace(/[^0-9]/g, ''))}
-                placeholder="400"
-                keyboardType="number-pad"
-                style={styles.bulkDistance}
-              />
-              <Text style={styles.bulkUnit}>m ×</Text>
-              <Input
-                value={bulkReps}
-                onChangeText={(v) => setBulkReps(v.replace(/[^0-9]/g, ''))}
-                placeholder="5"
-                keyboardType="number-pad"
-                style={styles.bulkReps}
-              />
-              <Text style={styles.bulkUnit}>本</Text>
-              <TouchableOpacity style={styles.bulkBtn} onPress={buildRows}>
-                <Text style={styles.bulkBtnText}>用意</Text>
-              </TouchableOpacity>
-            </View>
-            {workouts.length > 0 && (
-              <TouchableOpacity style={[styles.smallBtn, { alignSelf: 'flex-start', marginTop: 8 }]} onPress={repeatLast}>
-                <Ionicons name="repeat" size={14} color={colors.primary} />
-                <Text style={styles.smallBtnText}>
-                  前回と同じ（{workouts[0].title || EFFORT_LABEL[workouts[0].effort]}）
-                </Text>
-              </TouchableOpacity>
-            )}
-          </Field>
-
           <Field
             label={`各本のタイム（${rows.length}本 ・ 合計 ${formatMeters(totalMeters)}）`}
             hint="62.5 でも 1:02.5 でも入力できます。右に読み取り結果が出ます"
@@ -327,6 +279,14 @@ export default function LogScreen() {
                 <Ionicons name="add" size={14} color={colors.primary} />
                 <Text style={styles.smallBtnText}>1本足す</Text>
               </TouchableOpacity>
+              {workouts.length > 0 && (
+                <TouchableOpacity style={styles.smallBtn} onPress={repeatLast}>
+                  <Ionicons name="repeat" size={14} color={colors.primary} />
+                  <Text style={styles.smallBtnText}>
+                    前回と同じ（{workouts[0].title || EFFORT_LABEL[workouts[0].effort]}）
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </Field>
 
@@ -659,16 +619,6 @@ const styles = StyleSheet.create({
 
   tabWrap: { paddingHorizontal: 12, marginBottom: 4 },
 
-  bulkRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  bulkDistance: { width: 62, textAlign: 'right' },
-  bulkReps: { width: 46, textAlign: 'right' },
-  bulkUnit: { fontSize: 12.5, color: colors.textSub, fontWeight: '600' },
-  bulkBtn: {
-    marginLeft: 'auto', backgroundColor: colors.primary,
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm,
-  },
-  bulkBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-
   repRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
   repIndex: { width: 15, fontSize: 12, color: colors.textFaint, fontWeight: '700' },
   repDistance: { width: 58, textAlign: 'right' },
@@ -678,7 +628,7 @@ const styles = StyleSheet.create({
   repEchoOk: { fontSize: 11.5, color: colors.good, fontWeight: '700', fontVariant: ['tabular-nums'] },
   repEchoBad: { fontSize: 11, color: colors.danger, fontWeight: '700' },
   repDelete: { padding: 2 },
-  repActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  repActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
 
   optionalToggle: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
