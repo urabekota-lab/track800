@@ -85,6 +85,11 @@ export default function LogScreen() {
   const [restSec, setRestSec] = useState('')
   const [condition, setCondition] = useState(3)
   const [note, setNote] = useState('')
+  /** 「400m × 5本」をまとめて作るための入力 */
+  const [bulkDistance, setBulkDistance] = useState('400')
+  const [bulkReps, setBulkReps] = useState('5')
+  /** レスト・コンディション・メモは畳んでおく */
+  const [showOptional, setShowOptional] = useState(false)
 
   const isCustomDate = !DATE_CHOICES.some((d) => d.value === date)
 
@@ -115,11 +120,6 @@ export default function LogScreen() {
     navigation.setParams({ prefill: undefined })
   }, [prefill, navigation])
 
-  const addRow = () => {
-    const last = rows[rows.length - 1]
-    setRows([...rows, { distance: last?.distance ?? '400', time: '' }])
-  }
-
   const updateRow = (i: number, patch: Partial<RepRow>) => {
     setRows(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
   }
@@ -128,11 +128,38 @@ export default function LogScreen() {
     setRows(rows.length === 1 ? rows : rows.filter((_, idx) => idx !== i))
   }
 
-  /** 全行の距離をまとめて書き換える（400m×5 のような均一メニュー用） */
-  const applyDistanceToAll = () => {
-    const d = rows[0]?.distance ?? ''
-    setRows(rows.map((r) => ({ ...r, distance: d })))
+  /** 「400m × 5本」から行をまとめて作る。1本ずつ追加させないための入口 */
+  const buildRows = () => {
+    const d = Number(bulkDistance)
+    const n = Number(bulkReps)
+    if (!(d > 0) || !(n > 0)) {
+      setError('距離と本数を入力してください（例：400 と 5）')
+      return
+    }
+    setError('')
+    setRows(Array.from({ length: Math.min(30, n) }, () => ({ distance: String(d), time: '' })))
   }
+
+  /** 同じ距離をもう1本だけ足す */
+  const addRowSameDistance = () => {
+    const last = rows[rows.length - 1]
+    setRows([...rows, { distance: last?.distance ?? bulkDistance, time: '', target: last?.target ?? null }])
+  }
+
+  /** 直近の練習と同じ構成で入力欄を用意する（タイムは空） */
+  const repeatLast = () => {
+    const last = workouts[0]
+    if (!last) return
+    setTitle(last.title)
+    setEffort(last.effort)
+    setRows(last.reps.map((r) => ({ distance: String(r.distance), time: '', target: r.target ?? null })))
+    setRestSec(last.restSec != null ? formatTime(last.restSec, 0) : '')
+    setMenuId(last.menuId)
+    setError('')
+  }
+
+  /** いま入力されている本数の合計距離 */
+  const totalMeters = rows.reduce((a, r) => a + (Number(r.distance) || 0), 0)
 
   const save = async () => {
     setError('')
@@ -221,72 +248,129 @@ export default function LogScreen() {
             </ChipRow>
           </Field>
 
-          <Field label="各本のタイム" hint="タイムは 62.5 や 1:02.5 のどちらでも入力できます">
-            {rows.map((r, i) => (
-              <View key={i} style={styles.repRow}>
-                <Text style={styles.repIndex}>{i + 1}</Text>
-                <Input
-                  value={r.distance}
-                  onChangeText={(v) => updateRow(i, { distance: v.replace(/[^0-9]/g, '') })}
-                  placeholder="400"
-                  keyboardType="number-pad"
-                  style={styles.repDistance}
-                />
-                <Text style={styles.repUnit}>m</Text>
-                <Input
-                  value={r.time}
-                  onChangeText={(v) => updateRow(i, { time: v })}
-                  placeholder="62.5"
-                  // 「1:02.5」のコロンも打てるよう、純粋な数字キーパッドにはしない
-                  keyboardType="numbers-and-punctuation"
-                  style={styles.repTime}
-                />
-                {/* メニューから来た本は設定タイムを並べて出す */}
-                {r.target != null ? (
-                  <Text style={styles.repTarget}>設定{formatTime(r.target, 1)}</Text>
-                ) : null}
-                <TouchableOpacity onPress={() => removeRow(i)} style={styles.repDelete}>
-                  <Ionicons name="close-circle" size={19} color={colors.textFaint} />
-                </TouchableOpacity>
-              </View>
-            ))}
-            <View style={styles.repActions}>
-              <TouchableOpacity style={styles.smallBtn} onPress={addRow}>
-                <Ionicons name="add" size={14} color={colors.primary} />
-                <Text style={styles.smallBtnText}>本数を追加</Text>
+          {/* 本数分の欄をまとめて作る。1本ずつ追加させない */}
+          <Field label="本数をまとめて用意する">
+            <View style={styles.bulkRow}>
+              <Input
+                value={bulkDistance}
+                onChangeText={(v) => setBulkDistance(v.replace(/[^0-9]/g, ''))}
+                placeholder="400"
+                keyboardType="number-pad"
+                style={styles.bulkDistance}
+              />
+              <Text style={styles.bulkUnit}>m ×</Text>
+              <Input
+                value={bulkReps}
+                onChangeText={(v) => setBulkReps(v.replace(/[^0-9]/g, ''))}
+                placeholder="5"
+                keyboardType="number-pad"
+                style={styles.bulkReps}
+              />
+              <Text style={styles.bulkUnit}>本</Text>
+              <TouchableOpacity style={styles.bulkBtn} onPress={buildRows}>
+                <Text style={styles.bulkBtnText}>用意</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.smallBtn} onPress={applyDistanceToAll}>
-                <Ionicons name="copy-outline" size={13} color={colors.primary} />
-                <Text style={styles.smallBtnText}>1本目の距離を全部に</Text>
+            </View>
+            {workouts.length > 0 && (
+              <TouchableOpacity style={[styles.smallBtn, { alignSelf: 'flex-start', marginTop: 8 }]} onPress={repeatLast}>
+                <Ionicons name="repeat" size={14} color={colors.primary} />
+                <Text style={styles.smallBtnText}>
+                  前回と同じ（{workouts[0].title || EFFORT_LABEL[workouts[0].effort]}）
+                </Text>
+              </TouchableOpacity>
+            )}
+          </Field>
+
+          <Field
+            label={`各本のタイム（${rows.length}本 ・ 合計 ${formatMeters(totalMeters)}）`}
+            hint="62.5 でも 1:02.5 でも入力できます。右に読み取り結果が出ます"
+          >
+            {rows.map((r, i) => {
+              const parsed = parseTime(r.time)
+              return (
+                <View key={i} style={styles.repRow}>
+                  <Text style={styles.repIndex}>{i + 1}</Text>
+                  <Input
+                    value={r.distance}
+                    onChangeText={(v) => updateRow(i, { distance: v.replace(/[^0-9]/g, '') })}
+                    placeholder="400"
+                    keyboardType="number-pad"
+                    style={styles.repDistance}
+                  />
+                  <Text style={styles.repUnit}>m</Text>
+                  <Input
+                    value={r.time}
+                    onChangeText={(v) => updateRow(i, { time: v })}
+                    placeholder="62.5"
+                    // 「1:02.5」のコロンも打てるよう、純粋な数字キーパッドにはしない
+                    keyboardType="numbers-and-punctuation"
+                    style={styles.repTime}
+                  />
+                  {/* 入力をどう読み取ったかをその場で見せる */}
+                  <View style={styles.repEcho}>
+                    {r.time.trim() === '' ? (
+                      r.target != null ? <Text style={styles.repTarget}>設定{formatTime(r.target, 1)}</Text> : null
+                    ) : parsed == null ? (
+                      <Text style={styles.repEchoBad}>読めません</Text>
+                    ) : (
+                      <Text style={styles.repEchoOk}>{formatTime(parsed, 2)}</Text>
+                    )}
+                  </View>
+                  <TouchableOpacity onPress={() => removeRow(i)} style={styles.repDelete}>
+                    <Ionicons name="close-circle" size={19} color={colors.textFaint} />
+                  </TouchableOpacity>
+                </View>
+              )
+            })}
+            <View style={styles.repActions}>
+              <TouchableOpacity style={styles.smallBtn} onPress={addRowSameDistance}>
+                <Ionicons name="add" size={14} color={colors.primary} />
+                <Text style={styles.smallBtnText}>1本足す</Text>
               </TouchableOpacity>
             </View>
           </Field>
 
-          <Field label="レスト（任意）">
-            <Input
-              value={restSec}
-              onChangeText={setRestSec}
-              placeholder="例：3:00"
-              keyboardType="numbers-and-punctuation"
+          {/* 毎回は使わない項目は畳んでおく */}
+          <TouchableOpacity style={styles.optionalToggle} onPress={() => setShowOptional(!showOptional)}>
+            <Ionicons
+              name={showOptional ? 'chevron-down' : 'chevron-forward'}
+              size={15}
+              color={colors.primary}
             />
-          </Field>
+            <Text style={styles.optionalToggleText}>
+              レスト・コンディション・メモ{showOptional ? '' : '（任意）'}
+            </Text>
+          </TouchableOpacity>
 
-          <Field label="コンディション">
-            <ChipRow>
-              {[1, 2, 3, 4, 5].map((c) => (
-                <Chip
-                  key={c}
-                  label={['不調', 'やや不調', 'ふつう', 'good', '絶好調'][c - 1]}
-                  active={condition === c}
-                  onPress={() => setCondition(c)}
+          {showOptional && (
+            <>
+              <Field label="レスト">
+                <Input
+                  value={restSec}
+                  onChangeText={setRestSec}
+                  placeholder="例：3:00"
+                  keyboardType="numbers-and-punctuation"
                 />
-              ))}
-            </ChipRow>
-          </Field>
+              </Field>
 
-          <Field label="メモ（任意）">
-            <Input value={note} onChangeText={setNote} placeholder="風が強かった／後半垂れた など" multiline />
-          </Field>
+              <Field label="コンディション">
+                <ChipRow>
+                  {[1, 2, 3, 4, 5].map((c) => (
+                    <Chip
+                      key={c}
+                      label={['不調', 'やや不調', 'ふつう', 'good', '絶好調'][c - 1]}
+                      active={condition === c}
+                      onPress={() => setCondition(c)}
+                    />
+                  ))}
+                </ChipRow>
+              </Field>
+
+              <Field label="メモ">
+                <Input value={note} onChangeText={setNote} placeholder="風が強かった／後半垂れた など" multiline />
+              </Field>
+            </>
+          )}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <Button label={saving ? '保存中…' : '保存する'} onPress={save} disabled={saving} icon="checkmark" />
@@ -575,13 +659,32 @@ const styles = StyleSheet.create({
 
   tabWrap: { paddingHorizontal: 12, marginBottom: 4 },
 
-  repRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  repIndex: { width: 16, fontSize: 12, color: colors.textFaint, fontWeight: '700' },
-  repDistance: { width: 66, textAlign: 'right' },
+  bulkRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bulkDistance: { width: 62, textAlign: 'right' },
+  bulkReps: { width: 46, textAlign: 'right' },
+  bulkUnit: { fontSize: 12.5, color: colors.textSub, fontWeight: '600' },
+  bulkBtn: {
+    marginLeft: 'auto', backgroundColor: colors.primary,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.sm,
+  },
+  bulkBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+
+  repRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+  repIndex: { width: 15, fontSize: 12, color: colors.textFaint, fontWeight: '700' },
+  repDistance: { width: 58, textAlign: 'right' },
   repUnit: { fontSize: 12, color: colors.textSub },
   repTime: { flex: 1 },
+  repEcho: { width: 58, alignItems: 'flex-end' },
+  repEchoOk: { fontSize: 11.5, color: colors.good, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  repEchoBad: { fontSize: 11, color: colors.danger, fontWeight: '700' },
   repDelete: { padding: 2 },
   repActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+
+  optionalToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 10, marginBottom: 4,
+  },
+  optionalToggleText: { fontSize: 12.5, color: colors.primary, fontWeight: '700' },
   smallBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primarySoft,
     paddingHorizontal: 10, paddingVertical: 7, borderRadius: 99,
