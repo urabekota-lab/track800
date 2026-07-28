@@ -81,7 +81,7 @@ export default function LogScreen() {
   const [date, setDate] = useState(todayString())
   const [title, setTitle] = useState('')
   const [effort, setEffort] = useState<Effort>('interval')
-  const [rows, setRows] = useState<RepRow[]>([{ distance: '400', time: '' }])
+  const [rows, setRows] = useState<RepRow[]>([{ distance: '', time: '' }])
   const [restSec, setRestSec] = useState('')
   const [condition, setCondition] = useState(3)
   const [note, setNote] = useState('')
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
     paddingHorizontal: 6, marginTop: 6, marginBottom: 7,
   },
-  monthLabel: { fontSize: 13.5, fontWeight: '900', color: colors.primary },
+  monthLabel: { fontSize: 13.5, fontWeight: '900', color: colors.ink },
   monthMeta: { fontSize: 11, color: colors.textFaint, fontVariant: ['tabular-nums'] },
 
   logCard: {
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'baseline', gap: 4, backgroundColor: '#f1f4fa',
     borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5,
   },
-  repPillBest: { backgroundColor: colors.accentStrong },
+  repPillBest: { backgroundColor: colors.good },
   repPillDist: { fontSize: 10, color: colors.textFaint, fontWeight: '600' },
   repPillTime: { fontSize: 13, color: colors.text, fontWeight: '700' },
   repPillDelta: { fontSize: 10.5, fontWeight: '800', fontVariant: ['tabular-nums'] },

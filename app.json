@@ -6,8 +6,8 @@
     "orientation": "portrait",
     "scheme": "track800",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#f4f6fb",
-    "primaryColor": "#1d3f7a",
+    "backgroundColor": "#f6f7f9",
+    "primaryColor": "#2563eb",
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true,
@@ -17,7 +17,7 @@
       "package": "com.track800.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1d3f7a"
+        "backgroundColor": "#1f2937"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -28,8 +28,8 @@
       "name": "Track800",
       "shortName": "Track800",
       "lang": "ja",
-      "themeColor": "#1d3f7a",
-      "backgroundColor": "#f4f6fb",
+      "themeColor": "#1f2937",
+      "backgroundColor": "#f6f7f9",
       "display": "standalone",
       "orientation": "portrait"
     },

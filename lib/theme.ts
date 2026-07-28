@@ -6,16 +6,26 @@
  * 小さい補助テキストでも 4.5:1 を下回らないようにしている。
  */
 export const colors = {
-  bg: '#f4f6fb',
+  bg: '#f6f7f9',
   surface: '#ffffff',
-  border: '#d3dae9',
+  border: '#d8dce3',
 
-  primary: '#1d3f7a',
-  primarySoft: '#eaf0fd',
-  accent: '#e8541f',
-  accentSoft: '#fdeee7',
-  /** accent の上に白文字を置くとコントラストが 3.4:1 しかないため、塗り用の濃い版 */
-  accentStrong: '#c2410c', // 白文字で 5.0:1
+  /**
+   * 構造の色。見出し・ヘッダー面・グラフの地など「押せないもの」に使う。
+   * 無彩色にしておくと、数字とペースが一番目立つ。
+   */
+  ink: '#1f2937',
+  inkSoft: '#eef2f7',
+
+  /** 押せるものの色。ボタン・リンク・選択中・タブの現在地 */
+  primary: '#2563eb',
+  primarySoft: '#e8effd',
+  /** primary の上に白文字を置く塗り用（白文字で 6.3:1） */
+  primaryStrong: '#1d4ed8',
+
+  accent: '#2563eb',
+  accentSoft: '#e8effd',
+  accentStrong: '#1d4ed8',
 
   text: '#111827',      // 16.9:1
   textSub: '#475569',   // 8.3:1

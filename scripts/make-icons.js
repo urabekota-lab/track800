@@ -99,9 +99,10 @@ const GLYPH_W = 150
 const GLYPH_GAP = 26
 const GLYPH_STROKE = 38
 
-const COLOR_BG_TOP = [0x24, 0x4b, 0x91]
-const COLOR_BG_BOTTOM = [0x15, 0x2f, 0x5c]
-const COLOR_TRACK = [0xe8, 0x54, 0x1f]
+// アプリ本体の配色（チャコール＋青）に合わせる
+const COLOR_BG_TOP = [0x2b, 0x36, 0x44]    // チャコール（明）
+const COLOR_BG_BOTTOM = [0x15, 0x1b, 0x24] // チャコール（暗）
+const COLOR_TRACK = [0x3b, 0x82, 0xf6]     // 青。暗い地の上で沈まない明るさにする
 const COLOR_TEXT = [0xff, 0xff, 0xff]
 
 /** 数字 0：丸長方形の輪郭 */

@@ -246,10 +246,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginBottom: 12 },
   hello: { fontSize: 17, fontWeight: 'bold', color: colors.text },
   headerSub: { fontSize: 12, color: colors.textSub, marginTop: 2 },
-  iconBtn: { backgroundColor: colors.primary, borderRadius: 99, padding: 9 },
+  iconBtn: { backgroundColor: colors.ink, borderRadius: 99, padding: 9 },
 
   hero: {
-    backgroundColor: colors.primary, marginHorizontal: 12, borderRadius: radius.lg,
+    backgroundColor: colors.ink, marginHorizontal: 12, borderRadius: radius.lg,
     padding: 20, marginBottom: 12, alignItems: 'center',
   },
   heroLabel: { fontSize: 12, color: '#a9bde4', fontWeight: '600' },

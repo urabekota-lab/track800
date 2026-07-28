@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   column: { flex: 1, height: '100%', justifyContent: 'flex-end' },
   bar: { backgroundColor: '#a8bbdb', borderRadius: 2, minHeight: 3 },
   barBest: { backgroundColor: colors.good },
-  barLast: { backgroundColor: colors.primary },
+  barLast: { backgroundColor: colors.ink },
 
   legend: { flexDirection: 'row', gap: 14, marginTop: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
